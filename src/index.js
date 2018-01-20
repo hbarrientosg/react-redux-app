@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { createStore, combineReducers } from "redux";
+import { Provider, connect } from "react-redux";
 const { Component } = React;
 
 // Reducers
@@ -67,9 +68,19 @@ const todoApp = combineReducers({
   visibilityFilter
 });
 
-// Presentation
+// Creators
+const setVisibilityFilter = (filter) => ({
+    type: 'SET_VISIBILITY_FILTER',
+    filter
+  });
 let nextTodoId = 0;
-
+const addTodo = (text) => ({
+    type: "ADD_TODO",
+    text,
+    id: nextTodoId++
+})
+const toggleTodo = (id) => ({ type: "TOGGLE_TODO", id })
+// Presentation
 const Link = ({ active, children, onClick }) => {
   if (active) {
     return (<span>{children}</span>)
@@ -84,45 +95,6 @@ const Link = ({ active, children, onClick }) => {
     </a>
   );
 };
-
-class FilterLink extends Component {
-  componentDidMount() {
-    const { store } = this.context;
-    this.unsubscribe = store.subscribe(() => {
-      this.forceUpdate();
-    });
-  }
-
-  componentWillUnmount() {
-    this.unsubscribe();
-  }
-
-  render() {
-    const props = this.props;
-    const { store } = this.context;
-    const state = store.getState();
-
-    return (
-      <Link
-        active={
-          props.filter === state.visibilityFilter
-        }
-        onClick={() => {
-          store.dispatch({
-            type: 'SET_VISIBILITY_FILTER',
-            filter: props.filter
-          });
-        }}
-      >
-        {props.children}
-      </Link>
-    )
-  }
-}
-FilterLink.contextTypes = {
-  store: React.PropTypes.object
-}
-
 const TodoItem = ({ onClick, completed, text }) => (
     <li onClick={onClick}
         style={{
@@ -131,7 +103,6 @@ const TodoItem = ({ onClick, completed, text }) => (
         {text}
     </li>
   );
-
 const TodoList = ({ todos, onTodoClick }) => (
     <ul>
       {todos.map(todo =>
@@ -144,60 +115,56 @@ const TodoList = ({ todos, onTodoClick }) => (
     </ul>
   );
 
-class VisibleTodoList extends Component {
-  componentDidMount() {
-    const { store } = this.context;
-    this.unsubscribe = store.subscribe(() => {
-      this.forceUpdate();
-    });
-  }
-
-  componentWillUnmount() {
-    this.unsubscribe();
-  }
-
-  render() {
-    const props = this.props;
-    const { store } = this.context;
-    const state = store.getState();
-
-    return (
-      <TodoList
-        todos={ getVisibleTodos(state.todoList, state.visibilityFilter) }
-        onTodoClick={ (id) => {
-          store.dispatch({
-            type: "TOGGLE_TODO",
-            id: id
-          });
-        }} />
-    );
+// Connecting presentation with Redux
+const mapStateToFilterLinkProps = ( state, ownProps ) => {
+  return {
+    active: ownProps.filter === state.visibilityFilter
   }
 }
-VisibleTodoList.contextTypes = {
-  store: React.PropTypes.object
+const mapDispatchToFilterLinkProps = ( dispatch, ownProps ) => {
+  return {
+    onClick: () => {
+      dispatch(setVisibilityFilter(ownProps.filter));
+    }
+  }
 }
+const FilterLink = connect(
+  mapStateToFilterLinkProps,
+  mapDispatchToFilterLinkProps
+)(Link)
 
+const mapStateToTodoListProps = ( state ) => {
+  return {
+    todo: getVisibleTodos(state.todoList, state.visibilityFilter)
+  }
+}
+const mapDispatchToTodoListProps = ( dispatch ) => {
+  return {
+    onTodoClick: ( id ) => {
+      dispatch(toggleTodo(id));
+    }
+  }
+}
+const VisibleTodoList = connect(
+  mapStateToTodoListProps,
+  mapDispatchToTodoListProps
+)(TodoList);
 
-const AddTodo = (props, { store }) => {
+let AddTodo = ({ dispatch }) => {
   let input;
 
   return (
     <div>
       <input ref={node => input = node} />
       <button onClick={() => {
-        store.dispatch({
-          type: "ADD_TODO",
-          text: input.value,
-          id: nextTodoId++
-        });
+        dispatch(addTodo(input.value));
         input.value = "";
       }}>Add todo</button>
     </div>
   );
 }
-AddTodo.contextTypes = {
-  store: React.PropTypes.object
-}
+// pass the dispatch to the component and not a state
+AddTodo = connect()(AddTodo);
 
 const Footer = () =>  (
   <p>
@@ -226,22 +193,6 @@ const TodoApp = () => (
         </div>
       </div>
   );
-
-class Provider extends Component {
-  getChildContext() {
-    return {
-      store: this.props.store
-    }
-  }
-
-  render() {
-    return this.props.children;
-  }
-}
-
-Provider.childContextTypes = {
-  store: React.PropTypes.object
-}
 
 // Render the app
 ReactDOM.render(
