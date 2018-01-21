@@ -12,10 +12,14 @@ export const receiveTodos = (filter, response) => ({
   response
 })
 
-export const fetchTodos = (filter) =>
+export const fetchTodos = (filter) => (dispatch) => {
+  dispatch(requestTodos(filter));
+
   api.fetchTodos(filter).then(response =>
-    receiveTodos(filter, response)
+    dispatch(receiveTodos(filter, response))
   )
+}
+
 
 
 export const addTodo = (text) => ({
