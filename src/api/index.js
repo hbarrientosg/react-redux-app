@@ -4,15 +4,15 @@ import delay from 'delay';
 const fakeDatabase = {
   todoList: [{
     id: v4(),
-    name: 'hola',
+    text: 'hola',
     completed: false
   },{
     id: v4(),
-    name: 'hola 2',
+    text: 'hola 2',
     completed: false
   },{
     id: v4(),
-    name: 'hola 3',
+    text: 'hola 3',
     completed: true
   }]
 }
